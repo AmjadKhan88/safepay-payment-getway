@@ -29,7 +29,7 @@ await connectDB();
 app.use('/api/users',userRoutes);
 app.use('/api/orders',prductRoutes);
 
-app.post('/',(req,res)=>{
+app.get('/',(req,res)=>{
   res.send("Api is working")
 })
 
