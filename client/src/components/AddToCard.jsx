@@ -56,8 +56,8 @@ const checkOut = async () => {
     );
 
     // Redirect user to Safepay checkout
-    if (data.redirect_url) {
-      window.location.href = data.data.redirect_url;
+    if (data.checkoutURL) {
+      window.location.href = data.checkoutURL;
     } else {
       toast.error("No redirect URL returned from server");
     }

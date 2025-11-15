@@ -1,4 +1,8 @@
-import express from "express";
+// index.mjs or .js with "type": "module" in package.json
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+// Now you can use require
+const express = require('express');
 import cors from "cors"
 import 'dotenv/config';
 import connectDB from "./configs/db.js";
