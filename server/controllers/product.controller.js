@@ -100,38 +100,47 @@ export const paymentOrder = async (req, res) => {
 // -----------------------------------------------------
 export const safepayWebhook = async (req, res) => {
   try {
-     const { validateWebhook } = require('@sfpy/node-core/webhooks');
-      
-      const isValid = validateWebhook(
-        req.body.toString('utf8'), // Convert buffer to string
-        req.headers['x-sfpy-signature'],
-        process.env.SAFEPAY_WEBHOOK_SECRET
-      );
+    console.log('Webhook received - Headers:', req.headers);
+      console.log('Webhook received - Raw body:', req.body);
 
-      if (!isValid) {
-        return res.status(401).send('Invalid signature');
+      // 1. Verify signature (important for security)
+      const signature = req.headers['x-sfpy-signature'];
+      if (!signature) {
+        console.log('Missing signature');
+        return res.status(401).json({ error: 'Missing signature' });
       }
 
-      // 4. Parse JSON body
-      const event = JSON.parse(req.body.toString('utf8'));   
+      // TODO: Add signature verification when you have webhook secret
+       const isValid = verifyWebhookSignature(req.body, signature, process.env.SAFEPAY_WEBHOOK_SECRET);
+       if (!isValid) return res.status(401).json({ error: 'Invalid signature' });
 
-    // 2. Basic check
-    if (!event?.type || !event?.data) {
-      return res.status(400).send("Invalid data");
-    }
+      // 2. Parse the JSON body
+      const rawBody = req.body.toString('utf8');
+      const event = JSON.parse(rawBody);
+      
+      console.log('Parsed webhook event:', event);
 
-    console.log(`Webhook: ${event.type}`, event.data?.tracker);
+      // 3. Validate required fields
+      if (!event.type || !event.data) {
+        console.log('Invalid payload structure');
+        return res.status(400).json({ error: 'Invalid payload' });
+      }
 
-    // 3. Handle events
-    if (event.type === "payment.succeeded") {
-      await handleSuccessfulPayment(event.data);
-    } else if (event.type === "payment.failed") { 
-      await handleFailedPayment(event.data);
-    } else {
-      return res.status(200).send("Event ignored");
-    }
+      // 4. Handle the event
+      if (event.type === 'payment.succeeded') {
+        await handleSuccessfulPayment(event.data);
+      } else if (event.type === 'payment.failed') {
+        await handleFailedPayment(event.data);
+      } else {
+        console.log('Unhandled event type:', event.type);
+      }
 
-    return res.status(200).send("Webhook received");
+      // 5. Return SUCCESS response immediately
+      console.log('Webhook processed successfully');
+      res.status(200).json({ 
+        received: true,
+        message: 'Webhook processed successfully'
+      });
 
   } catch (error) {
     console.error("Webhook error:", error);
@@ -141,50 +150,64 @@ export const safepayWebhook = async (req, res) => {
 
 // Handle successful payment
 async function handleSuccessfulPayment(paymentData) {
-  const tracker = paymentData?.tracker;
-  
-  if (!tracker) {
-    throw new Error("No tracker found");
+  try {
+    console.log('Processing successful payment:', paymentData);
+    
+    const tracker = paymentData.tracker;
+    const amount = paymentData.amount;
+    const currency = paymentData.currency;
+    const customerEmail = paymentData.customer_email;
+
+    if (!tracker) {
+      throw new Error('Missing tracker');
+    }
+
+    // Find and update order in database
+    const order = await Order.findOne({ transactionId: tracker });
+    if (!order) {
+      console.error('Order not found for tracker:', tracker);
+      throw new Error('Order not found');
+    }
+
+    // Update order status
+    if (order.status !== 'success') {
+      order.status = 'success';
+      await order.save();
+      console.log('Order updated successfully:', order._id);
+    } else {
+      console.log('Order already processed:', order._id);
+    }
+
+  } catch (error) {
+    console.error('Error in handleSuccessfulPayment:', error);
+    throw error;
   }
-
-  // Find order
-  const order = await Order.findOne({ transactionId: tracker });
-  if (!order) {
-    throw new Error("Order not found");
-  }
-
-  // Check if already processed
-  if (order.status === "success") {
-    console.log("Order already paid");
-    return;
-  }
-
-  // Update order
-  order.status = "success";
-  await order.save();
-
-  console.log("Payment success for order:", order._id);
 }
 
 // Handle failed payment
 async function handleFailedPayment(paymentData) {
-  const tracker = paymentData?.tracker;
-  
-  if (!tracker) return;
+  try {
+    console.log('Processing failed payment:', paymentData);
+    
+    const tracker = paymentData.tracker;
+    if (!tracker) return;
 
-  // Find order
-  const order = await Order.findOne({ transactionId: tracker });
-  if (!order) return;
+    // Find and update order
+    const order = await Order.findOne({ transactionId: tracker });
+    if (!order) {
+      console.log('Order not found for failed payment:', tracker);
+      return;
+    }
 
-  // Don't update if already successful
-  if (order.status === "success") {
-    console.log("Order already paid, ignoring failure");
-    return;
+    // Update order status to failed
+    if (order.status !== 'success') {
+      order.status = 'failed';
+      await order.save();
+      console.log('Order marked as failed:', order._id);
+    }
+
+  } catch (error) {
+    console.error('Error in handleFailedPayment:', error);
+    throw error;
   }
-
-  // Mark as failed (DON'T DELETE)
-  order.status = "failed";
-  await order.save();
-
-  console.log("Payment failed for order:", order._id);
 }
