@@ -4,7 +4,6 @@ import Order from "../models/order.model.js";
 
 const safepay = require('@sfpy/node-core')(`${process.env.SAFEPAY_SECRET_KEY}`, {
   authType: 'secret',
-  webhookSecret: process.env.SAFEPAY_WEBHOOK_SECRET,
   host: 'https://sandbox.api.getsafepay.com'
 });
 
@@ -101,17 +100,20 @@ export const paymentOrder = async (req, res) => {
 // -----------------------------------------------------
 export const safepayWebhook = async (req, res) => {
   try {
-    // 1. Check signature (UNCOMMENT THIS)
-    const signature = req.headers['x-sfpy-signature'];
-    if (!signature) {
-      return res.status(401).send('Missing signature');
-    }
+     const { validateWebhook } = require('@sfpy/node-core/webhooks');
+      
+      const isValid = validateWebhook(
+        req.body.toString('utf8'), // Convert buffer to string
+        req.headers['x-sfpy-signature'],
+        process.env.SAFEPAY_WEBHOOK_SECRET
+      );
 
-    // TODO: Add signature verification here
-    // const isValid = verifySignature(req.body, signature, process.env.SAFEPAY_SECRET);
-    // if (!isValid) return res.status(401).send('Invalid signature');
+      if (!isValid) {
+        return res.status(401).send('Invalid signature');
+      }
 
-    const event = req.body;    
+      // 4. Parse JSON body
+      const event = JSON.parse(req.body.toString('utf8'));   
 
     // 2. Basic check
     if (!event?.type || !event?.data) {
@@ -123,7 +125,7 @@ export const safepayWebhook = async (req, res) => {
     // 3. Handle events
     if (event.type === "payment.succeeded") {
       await handleSuccessfulPayment(event.data);
-    } else if (event.type === "payment.failed") {
+    } else if (event.type === "payment.failed") { 
       await handleFailedPayment(event.data);
     } else {
       return res.status(200).send("Event ignored");
