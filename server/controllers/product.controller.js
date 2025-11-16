@@ -114,9 +114,7 @@ export const safepayWebhook = async (req, res) => {
       //  const isValid = verifyWebhookSignature(req.body, signature, process.env.SAFEPAY_WEBHOOK_SECRET);
       //  if (!isValid) return res.status(401).json({ error: 'Invalid signature' });
 
-      // 2. Parse the JSON body
-      const rawBody = req.body.toString('utf8');
-      const event = JSON.parse(rawBody);
+      const event = req.body;
       
       console.log('Parsed webhook event:', event);
 
