@@ -110,9 +110,9 @@ export const safepayWebhook = async (req, res) => {
         return res.status(401).json({ error: 'Missing signature' });
       }
 
-      // TODO: Add signature verification when you have webhook secret
-       const isValid = verifyWebhookSignature(req.body, signature, process.env.SAFEPAY_WEBHOOK_SECRET);
-       if (!isValid) return res.status(401).json({ error: 'Invalid signature' });
+      // // TODO: Add signature verification when you have webhook secret
+      //  const isValid = verifyWebhookSignature(req.body, signature, process.env.SAFEPAY_WEBHOOK_SECRET);
+      //  if (!isValid) return res.status(401).json({ error: 'Invalid signature' });
 
       // 2. Parse the JSON body
       const rawBody = req.body.toString('utf8');
