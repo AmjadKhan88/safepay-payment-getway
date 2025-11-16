@@ -212,8 +212,8 @@ const checkOut = async () => {
           </p>
         </div>
 
-        <button onClick={checkOut} disabled={cart.length === 0} className="w-full py-3 mt-6 cursor-pointer bg-indigo-500 text-white font-medium hover:bg-indigo-600 transition rounded">
-          Place Order
+        <button  onClick={checkOut} disabled={cart.length === 0 || loader} className="w-full py-3 mt-6 cursor-pointer bg-indigo-500 text-white font-medium hover:bg-indigo-600 transition rounded">
+         {loader ? "Order processing.." : "Place Order"}
         </button>
       </div>
     </div>

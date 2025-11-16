@@ -4,6 +4,7 @@ import Order from "../models/order.model.js";
 
 const safepay = require('@sfpy/node-core')(`${process.env.SAFEPAY_SECRET_KEY}`, {
   authType: 'secret',
+  webhookSecret: process.env.SAFEPAY_WEBHOOK_SECRET,
   host: 'https://sandbox.api.getsafepay.com'
 });
 
