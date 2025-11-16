@@ -6,7 +6,10 @@ import bodyParser from 'body-parser';
 const prductRoutes = express.Router();
 
 prductRoutes.post('/create',auth,paymentOrder);
-prductRoutes.post('/webhooks',auth,bodyParser.raw({ type: "*/*" }),safepayWebhook);
+app.post('/webhooks/safepay', 
+  bodyParser.raw({ type: 'application/json' }),
+  safepayWebhook
+);
 
 
 export default prductRoutes;
